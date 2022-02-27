@@ -1,0 +1,24 @@
+import torch
+import torch.nn as nn
+
+
+class CharacterLanguageModel(nn.Module):
+    def __init__(self, no_characters, embedding_dim, no_layers, lstms_hidden, lstm_out):
+        super().__init__()
+
+        self.embedding = nn.Embedding(no_characters, embedding_dim)
+
+        sizes = [embedding_dim, *[lstms_hidden] * no_layers, lstm_out]
+        self.lstms = [nn.LSTM(_in, _out) for _in, _out in zip(sizes[:-1], sizes[1:])]
+        self.output_layer = nn.Linear(lstm_out, no_characters)
+
+    @property
+    def number_of_parameters(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+    def forward(self, X):
+        X = self.embedding(X)
+        for lstm in self.lstms:
+            X, _ = lstm(X)
+        X = self.output_layer(X)
+        return nn.Softmax(X)
