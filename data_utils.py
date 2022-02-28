@@ -1,9 +1,10 @@
+import csv
+import linecache
+import os
+from pathlib import Path
+
 import torch
 from torch.utils.data import Dataset
-import linecache
-from pathlib import Path
-import csv
-import os
 from tqdm import tqdm
 
 NUMBER_TOKENS = 3536

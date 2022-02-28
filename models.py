@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class CharacterLanguageModel(nn.Module):
@@ -20,5 +21,6 @@ class CharacterLanguageModel(nn.Module):
         X = self.embedding(X)
         for lstm in self.lstms:
             X, _ = lstm(X)
+        X = X[:, -1]  # taking last time step
         X = self.output_layer(X)
-        return nn.Softmax(X)
+        return F.log_softmax(X, 1)
