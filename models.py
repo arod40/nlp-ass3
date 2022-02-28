@@ -9,8 +9,22 @@ class CharacterLanguageModel(nn.Module):
 
         self.embedding = nn.Embedding(no_characters, embedding_dim)
 
+        class DropHidden(nn.Module):
+            def __init__(self, lstm):
+                super().__init__()
+                self.lstm = lstm
+
+            def forward(self, X):
+                X, _ = self.lstm(X)
+                return X
+
         sizes = [embedding_dim, *[lstms_hidden] * no_layers, lstm_out]
-        self.lstms = [nn.LSTM(_in, _out) for _in, _out in zip(sizes[:-1], sizes[1:])]
+        self.lstms = nn.Sequential(
+            *[
+                DropHidden(nn.LSTM(_in, _out))
+                for _in, _out in zip(sizes[:-1], sizes[1:])
+            ]
+        )
         self.output_layer = nn.Linear(lstm_out, no_characters)
 
     @property
@@ -19,8 +33,7 @@ class CharacterLanguageModel(nn.Module):
 
     def forward(self, X):
         X = self.embedding(X)
-        for lstm in self.lstms:
-            X, _ = lstm(X)
+        X = self.lstms(X)
         X = X[:, -1]  # taking last time step
         X = self.output_layer(X)
         return F.log_softmax(X, 1)
