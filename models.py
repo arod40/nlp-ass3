@@ -7,7 +7,7 @@ class CharacterLanguageModel(nn.Module):
     def __init__(self, no_characters, embedding_dim, no_layers, lstms_hidden, lstm_out):
         super().__init__()
 
-        self.embedding = nn.Embedding(no_characters, embedding_dim)
+        self.embedding = nn.Embedding(no_characters + 1, embedding_dim)
 
         class DropHidden(nn.Module):
             def __init__(self, lstm):
@@ -36,4 +36,4 @@ class CharacterLanguageModel(nn.Module):
         X = self.lstms(X)
         X = X[:, -1]  # taking last time step
         X = self.output_layer(X)
-        return F.log_softmax(X, 1)
+        return X

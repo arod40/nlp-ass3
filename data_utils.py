@@ -11,13 +11,15 @@ NUMBER_TOKENS = 3536
 
 
 class CharacterLanguageModelDataset(Dataset):
-    def __init__(self, data_csv, padded=True):
+    def __init__(self, data_csv, sen_len=None, padded=True, load_label=True):
         self._data_csv = data_csv
         self._total_data = 0
         self._padded = padded
+        self._sen_len = sen_len or -1
+        self._load_label = load_label
         print("Reading data...")
         with open(self._data_csv, "r") as f:
-            for line in tqdm(f.readlines()):
+            for _ in tqdm(f.readlines()):
                 self._total_data += 1
         self._total_data -= 2  # removing header line and last empty line
         print("DONE!")
@@ -27,9 +29,10 @@ class CharacterLanguageModelDataset(Dataset):
 
         tokens = [int(t) for t in tokens.split() if self._padded or t != "0"]
 
-        # This is for the bug in the token, it shouldn't be here!
-        tokens = [(t if t <= 3536 else 0) for t in tokens]
-        X, y = torch.LongTensor(tokens[:-1]), tokens[-1]
+        if self._load_label:
+            X, y = torch.LongTensor(tokens[-self._sen_len - 1 : -1]), tokens[-1] - 1
+        else:
+            X, y = torch.LongTensor(tokens[-self._sen_len :]), None
         return id, (X, y)
 
     def __len__(self):
