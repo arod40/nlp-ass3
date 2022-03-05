@@ -1,13 +1,20 @@
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class CharacterLanguageModel(nn.Module):
-    def __init__(self, no_characters, embedding_dim, no_layers, lstms_hidden, lstm_out):
+    def __init__(
+        self,
+        no_characters,
+        embedding_dim,
+        no_layers,
+        lstms_hidden,
+        lstm_out,
+        last_time_step_only=True,
+    ):
         super().__init__()
 
         self.embedding = nn.Embedding(no_characters + 1, embedding_dim)
+        self._last_only = last_time_step_only
 
         class DropHidden(nn.Module):
             def __init__(self, lstm):
@@ -21,7 +28,7 @@ class CharacterLanguageModel(nn.Module):
         sizes = [embedding_dim, *[lstms_hidden] * no_layers, lstm_out]
         self.lstms = nn.Sequential(
             *[
-                DropHidden(nn.LSTM(_in, _out))
+                DropHidden(nn.LSTM(_in, _out, batch_first=True))
                 for _in, _out in zip(sizes[:-1], sizes[1:])
             ]
         )
@@ -34,6 +41,8 @@ class CharacterLanguageModel(nn.Module):
     def forward(self, X):
         X = self.embedding(X)
         X = self.lstms(X)
-        X = X[:, -1]  # taking last time step
+        if self._last_only:
+            X = X[:, -1]  # taking last time step
         X = self.output_layer(X)
+
         return X

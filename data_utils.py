@@ -1,7 +1,4 @@
-import csv
 import linecache
-import os
-from pathlib import Path
 
 import torch
 from torch.utils.data import Dataset
@@ -11,17 +8,24 @@ NUMBER_TOKENS = 3536
 
 
 class CharacterLanguageModelDataset(Dataset):
-    def __init__(self, data_csv, sen_len=None, padded=True, load_label=True):
+    def __init__(
+        self,
+        data_csv,
+        predict_last_only=True,
+        sen_len=None,
+        padded=True,
+        load_label=True,
+    ):
         self._data_csv = data_csv
         self._total_data = 0
+        self._predict_last_only = predict_last_only
         self._padded = padded
         self._sen_len = sen_len or -1
         self._load_label = load_label
         print("Reading data...")
         with open(self._data_csv, "r") as f:
-            for _ in tqdm(f.readlines()):
+            for _ in tqdm(f.readlines()[1:]):
                 self._total_data += 1
-        self._total_data -= 2  # removing header line and last empty line
         print("DONE!")
 
     def __getitem__(self, idx):
@@ -30,9 +34,15 @@ class CharacterLanguageModelDataset(Dataset):
         tokens = [int(t) for t in tokens.split() if self._padded or t != "0"]
 
         if self._load_label:
-            X, y = torch.LongTensor(tokens[-self._sen_len - 1 : -1]), tokens[-1] - 1
+            X = torch.LongTensor(tokens[-self._sen_len - 1 : -1])
+            # loading the sequence shifted to the left if predicting all the next-tokens in the sequence
+            y = (
+                tokens[-1]
+                if self._predict_last_only
+                else torch.LongTensor(tokens[-self._sen_len :])
+            ) - 1
         else:
-            X, y = torch.LongTensor(tokens[-self._sen_len :]), None
+            X, y = torch.LongTensor(tokens[-self._sen_len :]), 0
         return id, (X, y)
 
     def __len__(self):
